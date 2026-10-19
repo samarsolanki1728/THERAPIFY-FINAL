@@ -1,0 +1,219 @@
+/* Presentation only. Palette and font families stay in the existing theme. */
+#root {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root :is(h1, h2, h3) {
+  text-wrap: balance;
+}
+
+#root :is(h1, h2).font-display {
+  letter-spacing: -0.035em;
+}
+
+#root h3.font-display {
+  letter-spacing: -0.015em;
+}
+
+#root p.leading-relaxed {
+  line-height: 1.75;
+}
+
+#root .uppercase.tracking-widest {
+  letter-spacing: 0.12em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+/* A quiet, consistent navigation bar and clear keyboard focus. */
+#root nav.fixed {
+  border-bottom: 1px solid var(--border);
+  box-shadow: none;
+}
+
+#root nav.fixed > .max-w-6xl {
+  min-height: 4.5rem;
+}
+
+#root nav a {
+  text-underline-offset: 5px;
+}
+
+#root :is(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+}
+
+/* Reserve circular shapes for avatars, status indicators, and small chips. */
+#root :is(a, button).rounded-full.bg-primary,
+#root a.rounded-full.border-border,
+#root button.rounded-full.border-border {
+  border-radius: 0.625rem;
+}
+
+#root :is(a, button).bg-primary {
+  font-weight: 500;
+  transition-property: background-color, border-color, box-shadow, color;
+  transition-duration: 180ms;
+}
+
+/* Subtle surfaces instead of deep, floating card shadows. */
+#root :is(div, section).bg-card.rounded-3xl {
+  border-radius: 1.125rem;
+  box-shadow: 0 3px 16px color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+
+#root :is(a, button).bg-card.rounded-2xl {
+  border-radius: 0.875rem;
+  box-shadow: none;
+}
+
+#root :is(a, button).bg-card.rounded-2xl:hover {
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--foreground) 6%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  transform: none;
+  translate: none;
+}
+
+/* Home: an editorial hero, measured section rhythm, and aligned feature cards. */
+#root > .min-h-screen > section {
+  padding-block: 5.5rem;
+  scroll-margin-top: 5rem;
+}
+
+#root > .min-h-screen > section:first-of-type {
+  min-height: min(48rem, 100svh);
+  padding-top: 9rem;
+  padding-bottom: 6rem;
+}
+
+#root > .min-h-screen > section:first-of-type > .absolute {
+  opacity: 0.22;
+}
+
+#root > .min-h-screen > section:first-of-type h1 {
+  font-size: clamp(3rem, 5.4vw, 4.75rem);
+  line-height: 1.08;
+  margin-bottom: 1.75rem;
+}
+
+#root > .min-h-screen > section:first-of-type .grid > div > p {
+  max-width: 29rem;
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+#root > .min-h-screen > section:first-of-type .shadow-xl {
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+#root > .min-h-screen > section:first-of-type .absolute.shadow-lg {
+  border-radius: 0.625rem;
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+
+#root #features > div > .text-center {
+  text-align: left;
+  max-width: 42rem;
+  margin-bottom: 2.5rem;
+}
+
+#root #features > div > .text-center p {
+  margin-inline: 0;
+}
+
+#root #features .grid > a {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 1.75rem;
+}
+
+#root #features .grid > a > p {
+  margin-bottom: 1.25rem;
+}
+
+#root #features .grid > a > div:last-child {
+  margin-top: auto;
+  padding-top: 0.25rem;
+  opacity: 1;
+}
+
+#root #how {
+  border-block: 1px solid var(--border);
+}
+
+#root > .min-h-screen > section:last-of-type .bg-primary.rounded-3xl {
+  border-radius: 1.25rem;
+  padding-block: 3.75rem;
+}
+
+/* Product pages retain their layouts, with consistent heading and card spacing. */
+#root main > .max-w-6xl > header,
+#root main > .max-w-7xl > header {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2rem;
+}
+
+#root main section.rounded-2xl.border.shadow-sm {
+  box-shadow: none;
+  border-radius: 1rem;
+}
+
+#root .max-w-4xl > .bg-card.rounded-3xl {
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+#root :is(input[type="text"], input[type="email"], input[type="password"], textarea).bg-input-background {
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+}
+
+#root footer {
+  border-top: 1px solid var(--border);
+}
+
+#root footer a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@media (min-width: 1024px) {
+  #root > .min-h-screen > section:first-of-type > .grid {
+    gap: 5rem;
+    grid-template-columns: 1.08fr 0.92fr;
+  }
+}
+
+@media (max-width: 767px) {
+  #root > .min-h-screen > section {
+    padding-inline: 1.25rem;
+    padding-block: 3.5rem;
+  }
+
+  #root > .min-h-screen > section:first-of-type {
+    min-height: auto;
+    padding-top: 7.5rem;
+    padding-bottom: 4rem;
+  }
+
+  #root > .min-h-screen > section:first-of-type > .grid {
+    gap: 3rem;
+  }
+
+  #root #features .grid > a {
+    padding: 1.5rem;
+  }
+
+  #root > .min-h-screen > section:last-of-type .bg-primary.rounded-3xl {
+    padding: 2.5rem 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #root :is(a, button) {
+    transition: none;
+  }
+}

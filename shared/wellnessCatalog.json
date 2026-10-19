@@ -1,0 +1,113 @@
+
+[
+  {
+    "id": "breath",
+    "title": "Guided Breathing",
+    "category": "Breathing",
+    "duration": "2–5 min",
+    "description": "Follow a gentle breathing rhythm at your own pace.",
+    "steps": [
+      "Sit comfortably and relax your shoulders.",
+      "Follow the expanding and contracting circle.",
+      "Breathe naturally; stop if you feel uncomfortable."
+    ],
+    "suitableFor": ["stress", "anxiety", "overwhelmed", "relaxation"]
+  },
+  {
+    "id": "box",
+    "title": "Box Breathing",
+    "category": "Breathing",
+    "duration": "4 min",
+    "description": "An optional structured breathing practice.",
+    "steps": [
+      "Breathe in gently for four counts.",
+      "Pause briefly if comfortable.",
+      "Breathe out gently for four counts.",
+      "Repeat only while comfortable; skip holds if preferred."
+    ],
+    "suitableFor": ["stress", "focus", "relaxation"]
+  },
+  {
+    "id": "sleep",
+    "title": "Sleep Ritual",
+    "category": "Sleep",
+    "duration": "10 min",
+    "description": "A quiet routine to help you wind down.",
+    "steps": [
+      "Dim the lights.",
+      "Put your phone aside if possible.",
+      "Relax your shoulders and jaw.",
+      "Notice a calm, comfortable place."
+    ],
+    "suitableFor": ["poor sleep", "tiredness", "rest", "sleep routine"]
+  },
+  {
+    "id": "scan",
+    "title": "Body Scan",
+    "category": "Grounding",
+    "duration": "7 min",
+    "description": "Notice body sensations without judging them.",
+    "steps": [
+      "Sit or lie comfortably.",
+      "Notice your feet and legs.",
+      "Move attention gently through the rest of your body.",
+      "Return attention to your surroundings."
+    ],
+    "suitableFor": ["tension", "stress", "grounding"]
+  },
+  {
+    "id": "gratitude",
+    "title": "Gratitude Pause",
+    "category": "Mindfulness",
+    "duration": "3 min",
+    "description": "Notice a few things you appreciate, without forcing positivity.",
+    "steps": [
+      "Find a quiet moment.",
+      "Think of one to three things you appreciate.",
+      "Write them down if you like."
+    ],
+    "suitableFor": ["gratitude", "positive reflection", "mindfulness"]
+  },
+  {
+    "id": "morning",
+    "title": "Morning Intention",
+    "category": "Mindfulness",
+    "duration": "5 min",
+    "description": "Choose a small intention for your day.",
+    "steps": [
+      "Ask what would help today.",
+      "Pick a simple intention.",
+      "Think of one achievable action."
+    ],
+    "suitableFor": ["motivation", "routine", "goals", "self reflection"]
+  },
+  {
+    "id": "ground",
+    "title": "5-4-3-2-1 Grounding",
+    "category": "Grounding",
+    "duration": "3 min",
+    "description": "Use your senses to notice the present moment.",
+    "steps": [
+      "Notice five things you see.",
+      "Notice four things you feel.",
+      "Notice three things you hear.",
+      "Notice two things you smell.",
+      "Notice one thing you taste, if available."
+    ],
+    "suitableFor": ["overwhelmed", "anxiety", "grounding", "stress"]
+  },
+  {
+    "id": "movement",
+    "title": "Gentle Movement Break",
+    "category": "Movement",
+    "duration": "5 min",
+    "description": "Take a comfortable movement break.",
+    "steps": [
+      "Stand or sit comfortably.",
+      "Stretch your arms gently.",
+      "Move around at an easy pace.",
+      "Rest whenever you need to."
+    ],
+    "suitableFor": ["low motivation", "routine", "tiredness", "movement"]
+  }
+]
