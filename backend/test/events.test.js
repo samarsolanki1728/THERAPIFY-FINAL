@@ -1,12 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createHmac, randomUUID } = require('node:crypto');
+const { createHmac } = require('node:crypto');
 const { createStore } = require('../services/eventStore');
 const express = require('express');
 const createRoutes = require('../routes/eventRoutes');
 const mongoose = require('mongoose');
-require('dotenv').config({ path: require('node:path').resolve(__dirname, '../.env'), quiet: true });
-const { createPayments } = require('../services/eventPayments');
+const { createConnection } = require('./helpers/eventsConnection');
 const secret = 'isolated-test-secret';
 process.env.JWT_SECRET = secret;
 function token(userId = 'alice', exp = Math.floor(Date.now() / 1000) + 300) {
@@ -17,15 +16,12 @@ function token(userId = 'alice', exp = Math.floor(Date.now() / 1000) + 300) {
 function event(overrides = {}) {
   return { _id: 'sample', slug: 'sample-event', title: 'Mindful morning', shortDescription: 'Gentle practice', description: 'A guided session', host: 'Test host', venue: 'Online', category: 'Mindfulness', format: 'Online', pricePaise: 0, capacity: 1, startsAt: new Date(Date.now() + 86400000).toISOString(), endsAt: new Date(Date.now() + 90000000).toISOString(), joinUrl: 'https://example.com/private-room', ...overrides };
 }
-async function fixture(t, payments = { enabled: false }) {
-  const dbName = 'therapify_events_test_' + randomUUID().replaceAll('-', '').slice(0, 12);
-  const connection = await mongoose.createConnection(process.env.EVENTS_TEST_MONGO_URI || process.env.MONGO_URI, { dbName, autoIndex: false, autoCreate: false, serverSelectionTimeoutMS: 15000 }).asPromise();
-  t.after(async () => { assert.ok(connection.name.startsWith('therapify_events_test_')); try { await connection.dropDatabase(); } finally { await connection.close(); } });
-  await connection.db.collection('enrollments').createIndex({ user: 1, event: 1 }, { unique: true });
+async function fixture(t) {
+  const connection = createConnection();
   const store = createStore(connection);
   store.putEvent = async value => { const { _id, host, joinUrl, isDemo, format, ...rest } = value; await connection.db.collection('events').updateOne({ _id }, { $set: { ...rest, published: true, host: { name: host }, meetingUrl: joinUrl, sampleContent: Boolean(isDemo), format: format === 'In person' ? 'In-person' : format } }, { upsert: true }); };
   await store.putEvent(event());
-  const app = express(); app.use(express.json()); app.use('/api/events', createRoutes({ store, payments }));
+  const app = express(); app.use(express.json()); app.use('/api/events', createRoutes({ store }));
   const server = require('node:http').createServer(app);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
@@ -65,76 +61,6 @@ test('free enrollment is idempotent, isolated, capacity-safe, cancellable and re
   assert.equal(cancelled.data.enrollment.status, 'cancelled'); assert.equal(cancelled.data.enrollment.event.joinUrl, undefined);
   assert.equal((await request('/api/events/sample/enroll', { ...options, user: loser })).status, 200);
 });
-test('paid checkout fails clearly when unconfigured; past events cannot enroll', async t => {
-  const { request, store } = await fixture(t);
-  await store.putEvent(event({ pricePaise: 10000 }));
-  assert.equal((await request('/api/events/sample/enroll', { method: 'POST', body: {} })).status, 503);
-  assert.equal((await store.mine('alice')).length, 0);
-  await store.putEvent(event({ startsAt: new Date(Date.now() - 60000).toISOString() }));
-  assert.equal((await request('/api/events/sample/enroll', { method: 'POST', body: {} })).status, 409);
-});
-test('paid enrollment verifies capture and amount and supports reconciliation and refund requests', async t => {
-  let payment = null;
-  const payments = { enabled: true, keyId: 'test_key', createOrder: async () => ({ id: 'order_test' }), capturedPayment: async () => payment, verify: async () => payment };
-  const { request, store } = await fixture(t, payments); await store.putEvent(event({ pricePaise: 15000 }));
-  const options = { method: 'POST', body: {} };
-  const pending = await request('/api/events/sample/enroll', options);
-  assert.equal(pending.data.enrollment.status, 'pending'); assert.equal(pending.data.checkout.amount, 15000);
-  assert.equal(pending.data.enrollment.event.joinUrl, undefined);
-  payment = { id: 'pay_test', order_id: 'order_test', amount: 1, currency: 'INR', status: 'captured' };
-  assert.equal((await request('/api/events/sample/verify-payment', options)).status, 400);
-  payment.amount = 15000; payment.status = 'authorized';
-  assert.equal((await request('/api/events/sample/verify-payment', options)).status, 409);
-  payment.status = 'captured';
-  const mine = await request('/api/events/mine'); assert.equal(mine.data.enrollments[0].paymentStatus, 'paid');
-  const cancel = await request('/api/events/sample/cancel', options); assert.equal(cancel.data.enrollment.paymentStatus, 'refund_requested');
-  assert.equal((await request('/api/events/sample/enroll', options)).status, 409);
-});
-test('late captured payment cannot overbook an expired reservation', async t => {
-  const payments = { enabled: true, keyId: 'key', createOrder: async () => ({ id: 'order_late' }), capturedPayment: async () => null, verify: async () => ({ id: 'pay_late', order_id: 'order_late', amount: 100, currency: 'INR', status: 'captured' }) };
-  const { request, store } = await fixture(t, payments); await store.putEvent(event({ pricePaise: 100 }));
-  await request('/api/events/sample/enroll', { method: 'POST', body: {} });
-  const row = await store.enrollment('alice', 'sample'); await store.save({ ...row, holdUntil: new Date(0).toISOString() });
-  await store.save({ ...row, id: 'other', userId: 'bob', reference: 'other-ref', status: 'confirmed', paymentStatus: 'paid' });
-  const result = await request('/api/events/sample/verify-payment', { method: 'POST', body: {} });
-  assert.equal(result.data.enrollment.paymentStatus, 'refund_requested'); assert.equal(await store.occupied('sample'), 1);
-});
-test('Razorpay adapter rejects mismatched order and invalid signature before a network call', async () => {
-  const payments = createPayments({ keyId: 'key', keySecret: 'secret' });
-  await assert.rejects(payments.verify({ orderId: 'order_saved' }, { razorpay_order_id: 'order_wrong', razorpay_payment_id: 'pay_1' }), /does not match/);
-  await assert.rejects(payments.verify({ orderId: 'order_saved' }, { razorpay_order_id: 'order_saved', razorpay_payment_id: 'pay_1', razorpay_signature: 'forged' }), /signature/);
-});
-test('price and date filters apply before pagination and reject invalid ranges', async t => {
-  const { request, store } = await fixture(t);
-  const later = new Date(Date.now() + 3 * 86400000).toISOString();
-  await store.putEvent(event({ _id: 'paid', slug: 'paid-event', pricePaise: 5000, startsAt: later, endsAt: new Date(Date.parse(later) + 3600000).toISOString() }));
-  assert.equal((await request('/api/events?price=free')).data.total, 1);
-  const paid = await request('/api/events?price=paid&limit=1');
-  assert.equal(paid.data.events[0]._id, 'paid'); assert.equal(paid.data.pages, 1);
-  assert.equal((await request(`/api/events?from=${encodeURIComponent(later)}`)).data.total, 1);
-  assert.equal((await request(`/api/events?to=${encodeURIComponent(later)}`)).data.total, 1);
-  assert.equal((await request('/api/events?from=invalid')).status, 400);
-  assert.equal((await request('/api/events?from=2030-01-02&to=2030-01-01')).status, 400);
-  assert.equal((await request('/api/events?price=unknown')).status, 400);
-});
-test('cancelled pending checkout releases capacity and late capture requests refund without restoring access', async t => {
-  let payment = null;
-  const payments = { enabled: true, keyId: 'key', createOrder: async () => ({ id: 'order_cancel' }), capturedPayment: async () => payment, verify: async () => payment };
-  const { request, store } = await fixture(t, payments);
-  await store.putEvent(event({ pricePaise: 100 }));
-  const options = { method: 'POST', body: {} };
-  await request('/api/events/sample/enroll', options);
-  assert.equal(await store.occupied('sample'), 1);
-  assert.equal((await request('/api/events/sample/cancel', options)).data.enrollment.status, 'cancelled');
-  assert.equal(await store.occupied('sample'), 0);
-  payment = { id: 'pay_cancel', order_id: 'order_cancel', amount: 100, currency: 'INR', status: 'captured' };
-  const mine = await request('/api/events/mine');
-  assert.equal(mine.data.enrollments[0].paymentStatus, 'refund_requested');
-  assert.equal(mine.data.enrollments[0].event.joinUrl, undefined);
-  assert.equal(await store.occupied('sample'), 0);
-  const again = await request('/api/events/sample/verify-payment', options);
-  assert.equal(again.data.enrollment.status, 'cancelled');
-});
 test('completed and in-person events never expose meeting URLs, including to confirmed owners', async t => {
   const { request, store } = await fixture(t);
   await request('/api/events/sample/enroll', { method: 'POST', body: {} });
@@ -168,9 +94,9 @@ test('existing ObjectId bookings are reused and unrelated Atlas fields survive c
   assert.equal(saved.refundNote, 'Keep this note'); assert.ok(saved.user.equals(userId));
   assert.deepEqual((await connection.db.collection('events').findOne({ _id: eventId })).untouched, { keep: true });
 });
-test('separate Express routers cannot overbook one MongoDB event', async t => {
+test('separate Express routers share transactional capacity checks', async t => {
   const { request, connection } = await fixture(t);
-  const app = express(); app.use(express.json()); app.use('/api/events', createRoutes({ store: createStore(connection), payments: { enabled: false } }));
+  const app = express(); app.use(express.json()); app.use('/api/events', createRoutes({ store: createStore(connection) }));
   const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
   t.after(() => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); });
   const results = await Promise.all([
@@ -189,45 +115,96 @@ test('unpublished events are hidden; trailing-slash mine requires authentication
   assert.equal((await request('/api/events/mine/')).status, 200);
   assert.equal((await request('/api/events/mine/', { authorization: '' })).status, 401);
 });
-test('failed order creation releases the reservation', async t => {
-  const { request, store } = await fixture(t, { enabled: true, createOrder: async () => { throw new Error('offline'); } });
-  await store.putEvent(event({ pricePaise: 100 }));
-  assert.equal((await request('/api/events/sample/enroll', { method: 'POST', body: {} })).status, 500);
-  assert.equal(await store.occupied('sample'), 0);
-  assert.equal((await store.enrollment('alice', 'sample')).paymentStatus, 'failed');
+
+test('legacy event amounts are ignored; registration is free and stored fields are preserved', async t => {
+  const { request, store, connection } = await fixture(t);
+  await store.putEvent(event({ pricePaise: 15000 }));
+  const before = await connection.db.collection('events').findOne({ _id: 'sample' });
+  const result = await request('/api/events/sample/enroll', { method: 'POST', body: { userId: 'bob', status: 'cancelled' } });
+  assert.equal(result.status, 200);
+  assert.equal(result.data.enrollment.status, 'confirmed');
+  assert.equal(result.data.checkout, undefined);
+  assert.equal(result.data.enrollment.event.pricePaise, undefined);
+  const saved = await connection.db.collection('enrollments').findOne({ user: 'alice' });
+  for (const field of ['paymentStatus', 'gatewayOrderId', 'gatewayPaymentId', 'amountPaise', 'currency', 'paymentGateway', 'holdExpiresAt']) assert.equal(saved[field], undefined);
+  assert.equal((await store.mine('bob')).length, 0);
+  const after = await connection.db.collection('events').findOne({ _id: 'sample' });
+  assert.deepEqual(after, { ...before, enrolledCount: 1, __v: 1 });
+  assert.equal((await request('/api/events/sample/verify-payment', { method: 'POST', body: {} })).status, 404);
 });
 
-test('concurrent checkout creates one order and cannot undo cancellation', async t => {
-  let started, finish; const startedPromise = new Promise(resolve => { started = resolve; });
-  const orderPromise = new Promise(resolve => { finish = resolve; }); let orders = 0;
-  const payments = { enabled: true, keyId: 'test', capturedPayment: async () => null, createOrder: async () => { orders++; started(); return orderPromise; } };
-  const { request, connection, store } = await fixture(t, payments);
-  await store.putEvent(event({ pricePaise: 100 }));
-  const app = express(); app.use(express.json()); app.use('/api/events', createRoutes({ store: createStore(connection), payments }));
+test('legacy pending registration neither holds a seat nor changes during My Events reads', async t => {
+  const { request, connection, store } = await fixture(t);
+  const original = { _id: 'legacy', user: 'alice', event: 'sample', reference: 'LEGACY', status: 'pending',
+    paymentStatus: 'pending', gatewayOrderId: 'old-order', holdExpiresAt: new Date(Date.now() + 600000), createdAt: new Date() };
+  await connection.db.collection('enrollments').insertOne(original);
+  const mine = await request('/api/events/mine');
+  assert.equal(mine.status, 200);
+  assert.equal(mine.data.enrollments[0].status, 'pending');
+  assert.equal(mine.data.enrollments[0].event.joinUrl, undefined);
+  assert.deepEqual(await connection.db.collection('enrollments').findOne({ _id: 'legacy' }), original);
+  assert.equal(await store.occupied('sample'), 0);
+  const result = await request('/api/events/sample/enroll', { method: 'POST', body: {} });
+  assert.equal(result.data.enrollment.status, 'confirmed');
+  assert.equal(result.data.enrollment.reference, 'LEGACY');
+  const saved = await connection.db.collection('enrollments').findOne({ _id: 'legacy' });
+  assert.deepEqual(saved, { ...original, status: 'confirmed', updatedAt: saved.updatedAt, cancelledAt: null });
+  assert.equal(await connection.db.collection('enrollments').countDocuments({ user: 'alice' }), 1);
+});
+
+test('date filters, pagination and chronological sorting remain available', async t => {
+  const { request, store } = await fixture(t);
+  const later = new Date(Date.now() + 3 * 86400000).toISOString();
+  await store.putEvent(event({ _id: 'later', slug: 'later-event', startsAt: later, endsAt: new Date(Date.parse(later) + 3600000).toISOString() }));
+  assert.equal((await request('/api/events?limit=1&page=2')).data.events[0]._id, 'later');
+  assert.equal((await request('/api/events?sort=latest&limit=1')).data.events[0]._id, 'later');
+  assert.equal((await request(`/api/events?from=${encodeURIComponent(later)}`)).data.total, 1);
+  assert.equal((await request(`/api/events?to=${encodeURIComponent(later)}`)).data.total, 1);
+  assert.equal((await request('/api/events?from=invalid')).status, 400);
+  assert.equal((await request('/api/events?from=2030-01-02&to=2030-01-01')).status, 400);
+});
+
+test('started events, zero capacity and invalid capacity cannot be booked', async t => {
+  const { request, store } = await fixture(t);
+  for (const overrides of [{ startsAt: new Date(0) }, { capacity: 0 }, { capacity: null }, { capacity: -1 }]) {
+    await store.putEvent(event(overrides));
+    assert.equal((await request('/api/events/sample/enroll', { method: 'POST', body: {} })).status, 409);
+    assert.equal((await store.mine('alice')).length, 0);
+  }
+});
+
+test('same-account simultaneous registrations across routers create one enrollment', async t => {
+  const { request, connection, store } = await fixture(t);
+  const app = express(); app.use(express.json()); app.use('/api/events', createRoutes({ store: createStore(connection) }));
   const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
   t.after(() => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); });
-  const second = action => fetch('http://127.0.0.1:' + server.address().port + '/api/events/sample/' + action, { method: 'POST', headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' }, body: '{}' });
-  const first = request('/api/events/sample/enroll', { method: 'POST', body: {} });
-  await startedPromise;
-  try {
-    assert.equal((await second('enroll')).status, 409);
-    assert.equal((await second('cancel')).status, 200);
-  } finally { finish({ id: 'order_once' }); }
-  const result = await first;
-  assert.equal(orders, 1); assert.equal(result.data.enrollment.status, 'cancelled');
-  assert.equal(result.data.checkout, undefined); assert.equal(await store.occupied('sample'), 0);
-  assert.equal((await store.enrollment('alice', 'sample')).orderId, 'order_once');
+  const results = await Promise.all([
+    request('/api/events/sample/enroll', { method: 'POST', body: {} }),
+    fetch(`http://127.0.0.1:${server.address().port}/api/events/sample/enroll`, { method: 'POST', headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' }, body: '{}' })
+  ]);
+  assert.deepEqual(results.map(result => result.status), [200, 200]);
+  assert.equal(await connection.db.collection('enrollments').countDocuments({}), 1);
+  assert.equal(await store.occupied('sample'), 1);
 });
-test('Razorpay adapter sends correct order and verifies a valid signed capture', async t => {
-  const seen = [];
-  t.mock.method(globalThis, 'fetch', async (url, options) => {
-    seen.push({ url, options });
-    return { ok: true, json: async () => url.endsWith('/orders') ? { id: 'order_ok' } : { id: 'pay_ok', order_id: 'order_ok', amount: 100, currency: 'INR', status: 'captured' } };
-  });
-  const payments = createPayments({ keyId: 'key', keySecret: 'secret' });
-  assert.equal((await payments.createOrder({ pricePaise: 100 }, 'REF')).id, 'order_ok');
-  assert.deepEqual(JSON.parse(seen[0].options.body), { amount: 100, currency: 'INR', receipt: 'REF' });
-  const signature = createHmac('sha256', 'secret').update('order_ok|pay_ok').digest('hex');
-  const captured = await payments.verify({ orderId: 'order_ok' }, { razorpay_order_id: 'order_ok', razorpay_payment_id: 'pay_ok', razorpay_signature: signature });
-  assert.equal(captured.status, 'captured'); assert.ok(seen[1].url.endsWith('/payments/pay_ok'));
+
+test('cancellation is idempotent and rebooking reuses the enrollment reference', async t => {
+  const { request, connection } = await fixture(t);
+  const options = { method: 'POST', body: {} };
+  const first = await request('/api/events/sample/enroll', options);
+  await request('/api/events/sample/cancel', options);
+  const before = await connection.db.collection('enrollments').findOne({ user: 'alice' });
+  assert.equal((await request('/api/events/sample/cancel', options)).status, 200);
+  assert.deepEqual(await connection.db.collection('enrollments').findOne({ user: 'alice' }), before);
+  const again = await request('/api/events/sample/enroll', options);
+  assert.equal(again.data.enrollment.reference, first.data.enrollment.reference);
+  assert.equal(again.data.enrollment.status, 'confirmed');
+  assert.equal(await connection.db.collection('enrollments').countDocuments({}), 1);
+});
+
+test('write endpoints require authentication and a token with a user identity', async t => {
+  const { request } = await fixture(t);
+  for (const action of ['enroll', 'cancel']) {
+    assert.equal((await request(`/api/events/sample/${action}`, { method: 'POST', body: {}, authorization: '' })).status, 401);
+    assert.equal((await request(`/api/events/sample/${action}`, { method: 'POST', body: {}, authorization: `Bearer ${token(null)}` })).status, 401);
+  }
 });

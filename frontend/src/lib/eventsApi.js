@@ -26,7 +26,6 @@ export function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') || ''}` };
 }
 export const eventDate = value => new Date(value).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-export const eventPrice = value => value === 0 ? 'Free' : `₹${(value / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 export function downloadCalendar(enrollment) {
   const event = enrollment.event;
   const stamp = value => new Date(value).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');

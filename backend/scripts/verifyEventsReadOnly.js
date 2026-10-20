@@ -40,8 +40,6 @@ async function main() {
     let checked = 0;
     for (const user of new Set(before.data.enrollments.map(row => String(row.user)))) {
       const rows = before.data.enrollments.filter(row => String(row.user) === user);
-      // My events can reconcile payments. Only inspect accounts without pending payments.
-      if (rows.some(row => row.paymentStatus === 'pending')) continue;
       const mine = await get('/api/events/mine', jwt.sign({ userId: user }, process.env.JWT_SECRET, { expiresIn: '1m' }));
       assert.equal(mine.status, 200); assert.equal(mine.body.enrollments.length, rows.length);
       for (const row of rows) assert.ok(mine.body.enrollments.some(item => item._id === String(row._id) && item.reference === row.reference));

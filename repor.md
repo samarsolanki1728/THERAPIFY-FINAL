@@ -22,8 +22,6 @@ The inventory below describes the earlier analysis snapshot. Since that review, 
 - Sign-in returns users to the requested dashboard/events page. Journal links support opening a new editor or a specific entry.
 - Events now run in the main Express backend using the existing Atlas events and enrollments collections, with the original JWT authentication middleware.
 - Frontend Events and Dashboard calls use VITE_API_URL. Existing event records and bookings are reused without imports or reseeding.
-- Optional Razorpay checkout includes verification and reconciliation; refunds remain organizer-reviewed requests.
-- Verification: 41 backend tests passed (16 Events tests), frontend build passed, and read-only main-backend checks verified 8 Atlas events and 2 enrollments with unchanged record fingerprints. Real payment checkout and browser interaction testing were not performed.
 
 Setup and verification details: [backend/EVENTS.md](backend/EVENTS.md).
 
