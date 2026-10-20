@@ -20,12 +20,12 @@ The inventory below describes the earlier analysis snapshot. Since that review, 
 - `/events`: event discovery, search/category/format filters, sorting/pagination, details, enrollment, My events, cancellation, calendar export, share links, and configured online-session links.
 - Events is in desktop/mobile navigation. The homepage's Go to Dashboard button opens `/dashboard`; Dashboard is not added to navigation.
 - Sign-in returns users to the requested dashboard/events page. Journal links support opening a new editor or a specific entry.
-- A separate `events-backend/` service runs on port 5002, with its own SQLite persistence and existing-token verification. Existing `backend/` files were not changed by this integration.
-- Six clearly labelled demo listings were seeded locally. Real events can be imported through the separate service's catalog command.
-- Optional Razorpay checkout includes server-side verification and reconciliation. Live payments were not tested; refunds are recorded requests for organizer processing, not automatic refunds.
-- Validation: frontend production build passed; eight isolated backend tests passed; original API on port 5000 and new events API on port 5002 responded successfully. Browser interaction testing was not performed.
+- Events now run in the main Express backend using the existing Atlas events and enrollments collections, with the original JWT authentication middleware.
+- Frontend Events and Dashboard calls use VITE_API_URL. Existing event records and bookings are reused without imports or reseeding.
+- Optional Razorpay checkout includes verification and reconciliation; refunds remain organizer-reviewed requests.
+- Verification: 41 backend tests passed (16 Events tests), frontend build passed, and read-only main-backend checks verified 8 Atlas events and 2 enrollments with unchanged record fingerprints. Real payment checkout and browser interaction testing were not performed.
 
-Setup, API details and limitations: [events-backend/README.md](events-backend/README.md).
+Setup and verification details: [backend/EVENTS.md](backend/EVENTS.md).
 
 ## 1. Scope and current status
 

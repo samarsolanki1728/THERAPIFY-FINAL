@@ -32,9 +32,6 @@ app.use(
 // Parse incoming JSON request bodies.
 app.use(express.json());
 
-// Connect to MongoDB Atlas.
-connectDB();
-
 // Register API routes.
 app.use("/api/auth", authRoutes);
 app.use("/api/journals", journalRoutes);
@@ -42,6 +39,8 @@ app.use("/api/moods", moodRoutes);
 app.use("/api/mood-coach", moodCoachRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/recommendations", recommendationRoutes);
+
+app.use("/api/events", require("./routes/eventRoutes")({}));
 
 // Friend's Wellness API with authentication.
 app.use("/api/wellness", createWellnessRoutes(requireAuth));
@@ -55,6 +54,9 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+// Accept requests only after the shared Atlas connection is ready.
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
 });

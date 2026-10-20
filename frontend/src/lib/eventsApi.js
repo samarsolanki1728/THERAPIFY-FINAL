@@ -1,5 +1,5 @@
-export const EVENTS_API = `${(import.meta.env.VITE_EVENTS_API_URL || 'http://localhost:5002').replace(/\/$/, '')}/api/events`;
 export const CORE_API = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+export const EVENTS_API = `${CORE_API}/api/events`;
 export async function requestJson(url, options = {}) {
   let response;
   try {

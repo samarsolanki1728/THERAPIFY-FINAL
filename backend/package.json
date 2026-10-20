@@ -9,7 +9,8 @@
     "chat:key:init": "node scripts/initChatEncryptionKey.js",
     "chat:encrypt:check": "node scripts/encryptExistingChats.js",
     "chat:encrypt:migrate": "node scripts/encryptExistingChats.js --apply",
-    "test:chat-encryption": "node --test test/chatEncryption.test.js"
+    "test:chat-encryption": "node --test test/chatEncryption.test.js",
+    "test:events": "node --test test/events.test.js"
   },
   "keywords": [],
   "author": "",

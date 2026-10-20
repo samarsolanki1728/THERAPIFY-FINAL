@@ -1,6 +1,6 @@
-import { createHmac } from 'node:crypto';
-import { equalSignature } from './auth.js';
-export function createPayments({ keyId = process.env.RAZORPAY_KEY_ID, keySecret = process.env.RAZORPAY_KEY_SECRET } = {}) {
+const { createHmac, timingSafeEqual } = require('node:crypto');
+function equalSignature(a, b) { const x = Buffer.from(a); const y = Buffer.from(b || ''); return x.length === y.length && timingSafeEqual(x, y); }
+function createPayments({ keyId = process.env.RAZORPAY_KEY_ID, keySecret = process.env.RAZORPAY_KEY_SECRET } = {}) {
   async function request(path, body) {
     if (!keyId || !keySecret) { const error = new Error('Paid enrollment is not available yet. Please choose a free event.'); error.status = 503; throw error; }
     const response = await fetch(`https://api.razorpay.com/v1/${path}`, {
@@ -31,3 +31,5 @@ export function createPayments({ keyId = process.env.RAZORPAY_KEY_ID, keySecret 
     }
   };
 }
+
+module.exports = { createPayments };
