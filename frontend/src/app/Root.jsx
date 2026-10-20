@@ -80,9 +80,11 @@ function Footer() {
 }
 
 export default function Root() {
+  const { pathname } = useLocation();
+  const isChat = pathname.replace(/\/$/, "") === "/chat";
   return (/*#__PURE__*/
     _jsxs("div", {
-      className: "min-h-screen bg-background",
+      className: isChat ? "h-dvh overflow-hidden bg-background" : "min-h-screen bg-background",
       style: {
         fontFamily: "'DM Sans', system-ui, sans-serif",
         ["--font-display"]: "'Playfair Display', Georgia, serif"
@@ -95,7 +97,7 @@ export default function Root() {
       ` }), /*#__PURE__*/
       _jsx(Nav, {}), /*#__PURE__*/
       _jsx(Outlet, {}), /*#__PURE__*/
-      _jsx(Footer, {})] }
+      !isChat && _jsx(Footer, {})] }
     ));
 
 }

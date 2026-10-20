@@ -300,6 +300,7 @@ async function generateJournalAnalysis(entryBody, entryTitle, activities = []) {
     };
   }
 
+
   const prompt = `
 Analyze the following private journal entry with high empathy, emotional intelligence, and non-judgmental respect:
 

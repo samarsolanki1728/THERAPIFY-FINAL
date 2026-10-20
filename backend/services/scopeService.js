@@ -20,6 +20,8 @@ function conversationalIntent(message) {
   // Whole-message matching prevents a greeting prefix from hiding another task
   // or an emotional disclosure that needs a substantive response.
   if (/^(?:(?:hi|hello|hey)(?: there| therapify)?|good (?:morning|afternoon|evening)|how are you(?: doing)?|how's it going|what's up)(?: (?:how are you(?: doing)?|how's it going|what's up))?$/.test(text)) return 'greeting';
+  // Match complete casual replies, not prefixes that could hide unrelated requests.
+  if (/^(?:(?:all good|not bad)(?: (?:just |but )?(?:a bit |a little |kinda |pretty )?(?:sleepy|tired))?|(?:just )?chillin(?:g|'?)|(?:ok(?:ay)?|yeah|yep|yup|sure|thanks)(?: (?:bro|dude|mate))?|same here|sounds good|fair enough|got it|not much)$/.test(text)) return 'casual';
   if (/\b(?:music|songs?|playlist|tunes|listening to)\b/.test(text)) return 'music';
   if (/\b(?:motivat(?:e|ion)|pep talk|encourage me|encouragement)\b/.test(text)) return 'motivation';
   if (/\b(?:small talk|casual (?:chat|conversation)|chat about|talk about (?:my|our|the) day|weekend|hobb(?:y|ies)|daily routine|how was your day|how's your day|bored|boredom)\b/.test(text)) return 'casual';
