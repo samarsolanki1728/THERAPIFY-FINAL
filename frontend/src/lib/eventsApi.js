@@ -2,10 +2,24 @@ export const EVENTS_API = `${(import.meta.env.VITE_EVENTS_API_URL || 'http://loc
 export const CORE_API = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 export async function requestJson(url, options = {}) {
   let response;
-  try { response = await fetch(url, options); }
-  catch (error) { if (error.name === 'AbortError') throw error; throw new Error('Could not connect. Please check that the service is running and try again.'); }
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.message || `Request failed (${response.status}). Please try again.`);
+  try {
+    const timeout = AbortSignal.timeout(25000);
+    response = await fetch(url, { ...options, signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout });
+  }
+  catch (error) { if (error.name === 'AbortError') throw error; throw new Error(error.name === 'TimeoutError' ? 'The request timed out. Refresh to check its status before trying again.' : 'Could not connect. Please check that the service is running and try again.'); }
+  let data;
+  try { data = await response.json(); }
+  catch { throw new Error(`The service returned an unreadable response (${response.status}). Please retry.`); }
+  if (!response.ok) {
+    const error = new Error(data.message || `Request failed (${response.status}). Please try again.`);
+    error.status = response.status;
+    if (response.status === 401 && options.headers?.Authorization === `Bearer ${localStorage.getItem('token')}`) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.dispatchEvent(new Event('auth-change'));
+    }
+    throw error;
+  }
   return data;
 }
 export function authHeaders() {

@@ -1,4 +1,3 @@
-
 import { Link } from "react-router";
 import {
   Phone,
@@ -52,6 +51,8 @@ export default function Crisis() {
     <main className="min-h-screen bg-background">
       {/* Page heading */}
       <section className="border-b border-border bg-muted/30">
+        <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+        </div>
         <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Heart className="h-6 w-6 text-primary" />

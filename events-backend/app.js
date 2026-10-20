@@ -20,7 +20,7 @@ export function createApp({ store, secret, origin = 'http://localhost:5173', pay
     const { joinUrl, ...safe } = event;
     return { ...safe, spotsRemaining: Math.max(0, event.capacity - store.occupied(event._id)),
       paymentAvailable: event.pricePaise === 0 || payments.enabled,
-      ...(canJoin && joinUrl ? { joinUrl } : {}) };
+      ...(canJoin && event.format === 'Online' && new Date(event.endsAt) > new Date() && joinUrl ? { joinUrl } : {}) };
   }
   function present(row) {
     const { userId, ...safe } = row;
@@ -34,7 +34,7 @@ export function createApp({ store, secret, origin = 'http://localhost:5173', pay
     return store.transaction(() => {
       const current = store.enrollment(row.userId, row.eventId);
       if (current.paymentStatus === 'paid' || current.paymentStatus === 'refund_requested') return current;
-      const available = new Date(event.startsAt) > new Date() && store.occupied(event._id, row.id) < event.capacity;
+      const available = current.status !== 'cancelled' && new Date(event.startsAt) > new Date() && store.occupied(event._id, row.id) < event.capacity;
       const next = { ...current, paymentId: payment.id, status: available ? 'confirmed' : 'cancelled', paymentStatus: available ? 'paid' : 'refund_requested', holdUntil: null };
       store.save(next); return next;
     });
@@ -57,7 +57,13 @@ export function createApp({ store, secret, origin = 'http://localhost:5173', pay
       const page = Math.max(1, Math.min(10000, Number.parseInt(url.searchParams.get('page'), 10) || 1));
       const limit = Math.max(1, Math.min(50, Number.parseInt(url.searchParams.get('limit'), 10) || 12));
       const sort = url.searchParams.get('sort');
+      const price = url.searchParams.get('price');
+      const from = url.searchParams.get('from'); const to = url.searchParams.get('to');
+      if ((from && !Number.isFinite(Date.parse(from))) || (to && !Number.isFinite(Date.parse(to))) || (from && to && Date.parse(from) > Date.parse(to))) fail(400, 'Please choose a valid date range.');
+      if (price && !['free', 'paid'].includes(price)) fail(400, 'Invalid price filter.');
       const events = store.events().filter(event => new Date(event.endsAt) > new Date() &&
+        (!from || Date.parse(event.startsAt) >= Date.parse(from)) && (!to || Date.parse(event.startsAt) < Date.parse(to)) &&
+        (!price || (price === 'free' ? event.pricePaise === 0 : event.pricePaise > 0)) &&
         (!category || event.category === category) && (!format || event.format === format) &&
         `${event.title} ${event.shortDescription} ${event.host}`.toLowerCase().includes(q));
       events.sort((a, b) => sort === 'price-low' ? a.pricePaise - b.pricePaise || Date.parse(a.startsAt) - Date.parse(b.startsAt) : sort === 'price-high' ? b.pricePaise - a.pricePaise || Date.parse(a.startsAt) - Date.parse(b.startsAt) : Date.parse(a.startsAt) - Date.parse(b.startsAt));
@@ -97,7 +103,6 @@ export function createApp({ store, secret, origin = 'http://localhost:5173', pay
       if (match[2] === 'cancel') {
         if (!existing) fail(404, 'Enrollment not found.');
         if (existing.status === 'cancelled') return { enrollment: present(existing) };
-        if (existing.paymentStatus === 'pending') fail(409, 'Refresh payment status before cancelling.');
         if (new Date(event.startsAt) <= new Date()) fail(409, 'This event has already started.');
         const cancelled = { ...existing, status: 'cancelled', holdUntil: null, paymentStatus: existing.paymentStatus === 'paid' ? 'refund_requested' : existing.paymentStatus };
         store.save(cancelled);

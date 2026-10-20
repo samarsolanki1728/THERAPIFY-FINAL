@@ -4,3 +4,16 @@
 @import './presentation.css';
 
 @import "./site-layout.css";
+
+.events-page :is(button, a, input, select):focus-visible,
+.events-dialog :is(button, a, input, select):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .events-page *, .events-dialog * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

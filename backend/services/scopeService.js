@@ -15,9 +15,21 @@ const explicitNonSupport = [
 const supportLanguage = /\b(?:feel(?:ing|s)?|emotion(?:al|s)?|stress(?:ed|ful)?|worr(?:y|ies|ied)|fear|panic|sleep|relationship|partner|breakup|bull(?:y|ied|ying)|therap(?:y|ist)|counsel(?:ing|ling|lor)|mental health|wellbeing|well being|wellness|coping|self esteem|breathe|burnt out|burned out|sadness|anger|griev(?:ing|e)|anxious|motivated|hurt|upset|cry|tired|lonely|struggling)\b/;
 const conversation = /^(?:hi|hello|hey|thanks|thank you|yes|no|maybe|okay|ok|please|i don't know|i do not know|tell me more|go on|why|how so|that helps|not really|a little|what should i do|what can i do|what is my name|who am i)[.!? ]*$/;
 const memoryRequest = /\b(?:my name is|call me|what(?:'s| is) my name|remember (?:me|my name|what|our)|what did (?:i|we)|earlier|last time|previous (?:chat|conversation)|forget (?:that|what i)|stop suggesting|don't suggest|do not suggest|just listen|no (?:advice|exercises)|privacy|consent|therapify)\b/;
+function conversationalIntent(message) {
+  const text = normalize(message).replace(/[’‘]/g, "'").replace(/[^\p{L}\p{N}' ]/gu, ' ').replace(/\s+/g, ' ').trim();
+  // Whole-message matching prevents a greeting prefix from hiding another task
+  // or an emotional disclosure that needs a substantive response.
+  if (/^(?:(?:hi|hello|hey)(?: there| therapify)?|good (?:morning|afternoon|evening)|how are you(?: doing)?|how's it going|what's up)(?: (?:how are you(?: doing)?|how's it going|what's up))?$/.test(text)) return 'greeting';
+  if (/\b(?:music|songs?|playlist|tunes|listening to)\b/.test(text)) return 'music';
+  if (/\b(?:motivat(?:e|ion)|pep talk|encourage me|encouragement)\b/.test(text)) return 'motivation';
+  if (/\b(?:small talk|casual (?:chat|conversation)|chat about|talk about (?:my|our|the) day|weekend|hobb(?:y|ies)|daily routine|how was your day|how's your day|bored|boredom)\b/.test(text)) return 'casual';
+  return null;
+}
 function checkTopicScope(message, history = []) {
   const text = normalize(message);
   if (!text || explicitNonSupport.some(pattern => pattern.test(text))) return { inScope: false, reply: SCOPE_REPLY };
+  const intent = conversationalIntent(message);
+  if (intent) return { inScope: true, intent };
   if (matchesTopic(text) || supportLanguage.test(text) || conversation.test(text) || memoryRequest.test(text)) return { inScope: true };
   if (/\b(?:can|could|would) (?:we|i) (?:talk|chat|speak)\b/.test(text)) return { inScope: true };
   // Short follow-ups need not repeat a topic keyword. The model also classifies
@@ -27,4 +39,4 @@ function checkTopicScope(message, history = []) {
   if (text.length <= 240 && prior.some(item => matchesTopic(item.text) || supportLanguage.test(normalize(item.text))) && !/^(?:who|where|when|what)\b.*\b(?:invented|discovered|won|capital|president)\b/.test(text)) return { inScope: true };
   return { inScope: false, reply: SCOPE_REPLY };
 }
-module.exports = { checkTopicScope, SCOPE_REPLY };
+module.exports = { checkTopicScope, SCOPE_REPLY, conversationalIntent };

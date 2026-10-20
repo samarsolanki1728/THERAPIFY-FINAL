@@ -96,6 +96,45 @@ test('Razorpay adapter rejects mismatched order and invalid signature before a n
   await assert.rejects(payments.verify({ orderId: 'order_saved' }, { razorpay_order_id: 'order_wrong', razorpay_payment_id: 'pay_1' }), /does not match/);
   await assert.rejects(payments.verify({ orderId: 'order_saved' }, { razorpay_order_id: 'order_saved', razorpay_payment_id: 'pay_1', razorpay_signature: 'forged' }), /signature/);
 });
+test('price and date filters apply before pagination and reject invalid ranges', async t => {
+  const { request, store } = await fixture(t);
+  const later = new Date(Date.now() + 3 * 86400000).toISOString();
+  store.putEvent(event({ _id: 'paid', slug: 'paid-event', pricePaise: 5000, startsAt: later, endsAt: new Date(Date.parse(later) + 3600000).toISOString() }));
+  assert.equal((await request('/api/events?price=free')).data.total, 1);
+  const paid = await request('/api/events?price=paid&limit=1');
+  assert.equal(paid.data.events[0]._id, 'paid'); assert.equal(paid.data.pages, 1);
+  assert.equal((await request(`/api/events?from=${encodeURIComponent(later)}`)).data.total, 1);
+  assert.equal((await request(`/api/events?to=${encodeURIComponent(later)}`)).data.total, 1);
+  assert.equal((await request('/api/events?from=invalid')).status, 400);
+  assert.equal((await request('/api/events?from=2030-01-02&to=2030-01-01')).status, 400);
+  assert.equal((await request('/api/events?price=unknown')).status, 400);
+});
+test('cancelled pending checkout releases capacity and late capture requests refund without restoring access', async t => {
+  let payment = null;
+  const payments = { enabled: true, keyId: 'key', createOrder: async () => ({ id: 'order_cancel' }), capturedPayment: async () => payment, verify: async () => payment };
+  const { request, store } = await fixture(t, payments);
+  store.putEvent(event({ pricePaise: 100 }));
+  const options = { method: 'POST', body: {} };
+  await request('/api/events/sample/enroll', options);
+  assert.equal(store.occupied('sample'), 1);
+  assert.equal((await request('/api/events/sample/cancel', options)).data.enrollment.status, 'cancelled');
+  assert.equal(store.occupied('sample'), 0);
+  payment = { id: 'pay_cancel', order_id: 'order_cancel', amount: 100, currency: 'INR', status: 'captured' };
+  const mine = await request('/api/events/mine');
+  assert.equal(mine.data.enrollments[0].paymentStatus, 'refund_requested');
+  assert.equal(mine.data.enrollments[0].event.joinUrl, undefined);
+  assert.equal(store.occupied('sample'), 0);
+  const again = await request('/api/events/sample/verify-payment', options);
+  assert.equal(again.data.enrollment.status, 'cancelled');
+});
+test('completed and in-person events never expose meeting URLs, including to confirmed owners', async t => {
+  const { request, store } = await fixture(t);
+  await request('/api/events/sample/enroll', { method: 'POST', body: {} });
+  store.putEvent(event({ format: 'In person' }));
+  assert.equal((await request('/api/events/mine')).data.enrollments[0].event.joinUrl, undefined);
+  store.putEvent(event({ startsAt: new Date(Date.now() - 7200000).toISOString(), endsAt: new Date(Date.now() - 3600000).toISOString() }));
+  assert.equal((await request('/api/events/mine')).data.enrollments[0].event.joinUrl, undefined);
+});
 test('event and enrollment persistence survives a service restart', () => {
   const directory = mkdtempSync(join(tmpdir(), 'therapify-events-test-'));
   const file = join(directory, 'events.sqlite');

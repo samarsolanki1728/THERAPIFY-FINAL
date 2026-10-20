@@ -231,7 +231,7 @@ router.post(
       const userId = req.user.userId;
       const userText = req.body.message.trim();
       const conversation = req.conversation || new Conversation({ user: userId, title: deriveConversationTitle(userText), messages: [] });
-      const needsAIContext = !req.chatSafety.intercept && req.chatScope.inScope;
+      const needsAIContext = !req.chatSafety.intercept && req.chatScope.inScope && req.chatScope.intent !== "greeting";
       const consent = req.body.contextConsent === true;
       const [userDoc, wellnessContext] = needsAIContext ? await Promise.all([
         User.findById(userId).select("name").lean(),

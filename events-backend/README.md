@@ -57,6 +57,18 @@ Provider reference: [Razorpay payment integration](https://razorpay.com/docs/pay
 
 ## Verification
 
+### Events review (October 2026)
+
+The Events page continues to use the existing shared cream, sage and lavender theme and Radix dialogs. Discovery now supports `price=free|paid`, inclusive `from` and exclusive `to` timestamps, applied before pagination. The browser converts the selected local dates into timestamp boundaries (including the full final day). Invalid dates/ranges and unsupported price filters return HTTP 400.
+
+Requests are abortable and bounded by a timeout; obsolete listing/detail/enrollment responses are ignored. An authenticated HTTP 401 clears only the matching stored session. Checkout uses the server-issued order, keeps booking actions locked while open, and releases the application dialog before opening Razorpay. Payment failures are never treated as confirmation.
+
+Pending bookings can be cancelled after checking the provider for captured payments. Cancellation releases the hold; a later capture on a cancelled booking records `refund_requested` even when there is room. Confirmed online enrollment responses expose the meeting link only until the event ends. Public lists/details, cancelled/pending enrollments, and in-person events never expose it.
+
+The Express/MongoDB authentication contract was inspected: its HS256 token carries `userId` and an expiry, matching this service's verifier when both use the same `JWT_SECRET`. There are no Events routes or Events schemas in the Express/MongoDB application; the frontend correctly uses `VITE_EVENTS_API_URL` for the existing SQLite service. No database migration or replacement backend was introduced.
+
+Regression coverage includes all six event endpoints, auth failures, ownership, concurrent capacity, duplicate enrollments, provider signature checks, payment reconciliation, refunds, meeting access, filters and persistence. Live MongoDB sign-in, a real Razorpay test-mode checkout, browser focus/mobile interaction, and organizer refund processing still require environment-level verification. No payment credentials or live database data are needed by the automated tests.
+
 ```powershell
 npm.cmd test
 ```
