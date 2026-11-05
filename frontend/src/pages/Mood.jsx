@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useState, useEffect, useMemo } from "react";
 import AdaptiveMoodCheckin from "../app/components/AdaptiveMoodCheckin";
 import { Link } from "react-router";
@@ -7,7 +8,7 @@ import {
   CartesianGrid, BarChart, Bar
 } from "recharts";
 
-const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/moods`;
+const API_URL = `${API_BASE_URL}/api/moods`;
 
 const emotionsList = [
   "Calm", "Anxious", "Hopeful", "Sad", "Grateful",

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Heart, Eye, EyeOff, ArrowRight } from "lucide-react";
@@ -21,7 +22,7 @@ export default function SignIn() {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/signin`,
+        `${API_BASE_URL}/api/auth/signin`,
         {
           method: "POST",
           headers: {

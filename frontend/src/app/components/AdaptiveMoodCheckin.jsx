@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -9,9 +10,7 @@ import {
   Leaf
 } from "lucide-react";
 
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:5000";
+const API_URL = API_BASE_URL;
 
 // Update these if your React Router uses different paths.
 const AI_CHAT_PATH = "/chat";

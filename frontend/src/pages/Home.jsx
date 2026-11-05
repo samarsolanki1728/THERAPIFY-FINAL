@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import LandingLayout from "./LandingLayout";
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router";
@@ -9,7 +10,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from "recharts";
 
-const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/moods`;
+const API_URL = `${API_BASE_URL}/api/moods`;
 
 const moodsList = [
   { emoji: "😔", label: "Low", value: 1 },
@@ -98,7 +99,7 @@ export default function Home() {
   // Load User, User Count & Mood Entries
   useEffect(() => {
     // Fetch registered user count from backend
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/count`)
+    fetch(`${API_BASE_URL}/api/auth/count`)
       .then((res) => res.json())
       .then((data) => {
         if (typeof data.count === "number") {

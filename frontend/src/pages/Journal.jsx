@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useEffect, useState } from "react";
 import {
   BookOpen,
@@ -16,7 +17,7 @@ import {
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 
-const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/journals`;
+const API_URL = `${API_BASE_URL}/api/journals`;
 
 export default function Journal() {
   const navigate = useNavigate();

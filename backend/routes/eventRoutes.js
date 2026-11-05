@@ -4,7 +4,7 @@ const { randomUUID } = require('node:crypto');
 const { ObjectId } = require('mongoose').mongo;
 
 function fail(status, message) { const error = new Error(message); error.status = status; throw error; }
-function createEventsRoutes({ store = require("../services/eventStore").createStore(), origin = 'http://localhost:5173' }) {
+function createEventsRoutes({ store = require("../services/eventStore").createStore(), origin = 'http://localhost:5173', isAllowedOrigin = value => !value || value === origin }) {
   let queue = Promise.resolve();
   const serialize = task => { const next = queue.then(task); queue = next.catch(() => {}); return next; };
   const limits = new Map();
@@ -91,7 +91,7 @@ function createEventsRoutes({ store = require("../services/eventStore").createSt
   router.use((req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    if (req.headers.origin && req.headers.origin !== origin) return res.status(403).json({ message: 'Origin not allowed.' });
+    if (!isAllowedOrigin(req.headers.origin)) return res.status(403).json({ message: 'Origin not allowed.' });
     if (req.method !== 'GET' || req.path.replace(/\/$/, '') === '/mine') return requireAuth(req, res, () => {
       if (typeof req.user?.userId !== 'string' || !req.user.userId.trim()) return res.status(401).json({ message: 'Authentication required.' });
       next();

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router";
@@ -6,7 +7,7 @@ import {
   ArrowRight, X, Search, Play, Pause, RotateCcw
 } from "lucide-react";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API = API_BASE_URL;
 
 const guidedVideo = {
   id: "ucla-mindfulness",

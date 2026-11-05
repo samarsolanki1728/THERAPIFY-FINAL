@@ -6,6 +6,7 @@ require("dotenv").config();
 require("./services/chatEncryptionService").getEncryptionKey();
 
 const connectDB = require("./config/db");
+const { corsOptions, isAllowedOrigin } = require("./config/cors");
 
 const authRoutes = require("./routes/authRoutes");
 const journalRoutes = require("./routes/journalRoutes");
@@ -20,14 +21,7 @@ const requireAuth = require("./middleware/authMiddleware");
 const app = express();
 
 // Allow frontend requests, including authentication cookies.
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-  })
-);
+app.use(cors(corsOptions));
 
 // Parse incoming JSON request bodies.
 app.use(express.json());
@@ -54,7 +48,7 @@ app.use("/api/mood-coach", moodCoachRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 
-app.use("/api/events", require("./routes/eventRoutes")({}));
+app.use("/api/events", require("./routes/eventRoutes")({ isAllowedOrigin }));
 
 // Friend's Wellness API with authentication.
 app.use("/api/wellness", createWellnessRoutes(requireAuth));
@@ -66,7 +60,7 @@ app.get("/", (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 
 // Vercel imports the app and owns the listener. Local scripts still start it.
 module.exports = app;

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Sparkles,
@@ -18,7 +19,7 @@ import {
 import { Link } from "react-router";
 import MarkdownRenderer from "../app/components/MarkdownRenderer";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API = API_BASE_URL;
 
 const initialWelcomeMessage = {
   role: "ai",

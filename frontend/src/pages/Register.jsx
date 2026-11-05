@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Heart, ArrowRight, CheckCircle } from "lucide-react";
@@ -38,7 +39,7 @@ export default function Register() {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/signup`,
+        `${API_BASE_URL}/api/auth/signup`,
         {
           method: "POST",
           headers: {
