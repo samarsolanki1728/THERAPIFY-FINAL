@@ -156,27 +156,6 @@ export default function SignIn() {
             </button>
           </form>
 
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px bg-border" />
-
-            <span className="text-xs text-muted-foreground">
-              or continue with
-            </span>
-
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {["Google", "Apple"].map((provider) => (
-              <button
-                key={provider}
-                type="button"
-                className="flex items-center justify-center gap-2 border border-border rounded-xl py-2.5 text-sm font-medium text-foreground hover:bg-secondary/60 transition-all"
-              >
-                {provider}
-              </button>
-            ))}
-          </div>
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-6">

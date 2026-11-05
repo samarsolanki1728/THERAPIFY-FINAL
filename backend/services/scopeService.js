@@ -39,6 +39,9 @@ function checkTopicScope(message, history = []) {
   if (/\b(?:i|i'm|i've|my|me|we|our)\b/.test(text) && !/\b(?:write|generate|calculate|solve|code|homework|assignment)\b/.test(text)) return { inScope: true };
   const prior = Array.isArray(history) ? history.slice(-8).filter(item => item?.role === 'user' && typeof item.text === 'string') : [];
   if (text.length <= 240 && prior.some(item => matchesTopic(item.text) || supportLanguage.test(normalize(item.text))) && !/^(?:who|where|when|what)\b.*\b(?:invented|discovered|won|capital|president)\b/.test(text)) return { inScope: true };
-  return { inScope: false, reply: SCOPE_REPLY };
+  // Missing keywords are not evidence that a message is unrelated. Let the
+  // model interpret paraphrases, short replies and other languages in context;
+  // its system instruction still enforces scope for unrecognized factual tasks.
+  return { inScope: true };
 }
 module.exports = { checkTopicScope, SCOPE_REPLY, conversationalIntent };
