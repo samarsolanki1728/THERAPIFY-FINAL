@@ -32,6 +32,20 @@ app.use(
 // Parse incoming JSON request bodies.
 app.use(express.json());
 
+// Liveness checks do not require an Atlas connection.
+app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+
+// Serverless invocations share the connection and await cold-start initialization.
+app.use("/api", async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch {
+    console.error("MongoDB connection unavailable");
+    res.status(503).json({ message: "Database temporarily unavailable. Please try again shortly." });
+  }
+});
+
 // Register API routes.
 app.use("/api/auth", authRoutes);
 app.use("/api/journals", journalRoutes);
@@ -54,9 +68,16 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 5001;
 
-// Accept requests only after the shared Atlas connection is ready.
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+// Vercel imports the app and owns the listener. Local scripts still start it.
+module.exports = app;
+
+if (require.main === module && !process.env.VERCEL) {
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }).catch(() => {
+    console.error("Backend startup failed: MongoDB connection unavailable");
+    process.exitCode = 1;
   });
-});
+}
